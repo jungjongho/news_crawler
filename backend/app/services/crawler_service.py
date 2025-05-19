@@ -51,8 +51,10 @@ class CrawlerService:
             'where': 'news',
             'sm': 'tab_jum',
             'query': keyword,
-            'sort': 1,  # 최신순
-            'start': (start_page - 1) * 10 + 1
+            'sort': 0,  # 관련도순
+            'pd': -1,   # 전체 기간
+            'start': (start_page - 1) * 10 + 1,
+            'nso': 'so:r,p:all,a:all' # 관련도순, 전체 기간, 모든 언론사
         }
         
         # URL 파라미터 생성
@@ -87,6 +89,15 @@ class CrawlerService:
                 
                 # HTML 파싱
                 soup = BeautifulSoup(response.text, 'html.parser')
+                
+                # 디버그용 - HTML 구조 파악
+                logger.debug(f"First 1000 chars of HTML: {response.text[:1000]}")
+                
+                # CSS 선택자 확인
+                ul_element = soup.select_one('ul.list_news._infinite_list')
+                if ul_element:
+                    logger.info("Found list_news._infinite_list element")
+                    logger.debug(f"First ul element: {str(ul_element)[:500]}")
                 
                 # 뉴스 아이템 추출
                 items = extract_news_items(soup)

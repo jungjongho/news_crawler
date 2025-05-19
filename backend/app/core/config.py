@@ -5,7 +5,8 @@ import os
 import platform
 from pathlib import Path
 from typing import List, Optional
-from pydantic import BaseSettings, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 from dotenv import load_dotenv
 
 # .env 파일 로드
@@ -49,7 +50,6 @@ class Settings(BaseSettings):
     # 기타 설정
     MAX_NEWS_PER_KEYWORD: int = 100
     
-    class Config:
-        case_sensitive = True
+    model_config = SettingsConfigDict(case_sensitive=True)
 
 settings = Settings()

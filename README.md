@@ -104,7 +104,9 @@ chmod +x run.sh  # 실행 권한 부여
 ## 주의사항
 
 - OpenAI API 키는 사용자의 브라우저에 저장되며, 서버로 전송되지는 않습니다.
-- 네이버 뉴스 웹 구조 변경 시 크롤링이 정상적으로 작동하지 않을 수 있습니다.
+- 네이버 뉴스 웹 구조 변경 시 크롤링이 정상적으로 작동하지 않을 수 있습니다. (2025년 5월 기준 업데이트 완료)
+- HTML 선택자: `#main_pack > section.sc_new.sp_nnews._fe_news_collection._prs_nws > div.api_subject_bx > div.group_news > ul > li`
+- 업데이트된 선택자: `ul.list_news._infinite_list li` 혹은 `div.sds-comps-vertical-layout.sds-comps-full-layout.iYo99IP8GixD0iM_4cb8`
 - 과도한 크롤링은 네이버의 차단을 받을 수 있으니 적절히 사용해주세요.
 
 ## 라이선스

@@ -18,12 +18,24 @@ def extract_news_items(soup):
     뉴스 아이템 목록을 추출하는 함수
     다양한 선택자를 순차적으로 시도
     """
-    # 2025년 5월 구조
-    items = soup.select('div.sds-comps-vertical-layout.dZQQMujvOqnxG1bUQsg6')
+    # 2025년 5월 최신 구조 (Xpath 및 선택자 정보 기반)
+    items = soup.select('#main_pack > section.sc_new.sp_nnews._fe_news_collection._prs_nws > div.api_subject_bx > div.group_news > ul > li')
     if items:
-        logger.info(f"News items found using 2025 May selector, count: {len(items)}")
+        logger.info(f"News items found using latest 2025 May selector (specific), count: {len(items)}")
         return items
     
+    # 2025년 5월 구조 (ul 리스트 기반)
+    items = soup.select('ul.list_news._infinite_list li')
+    if items:
+        logger.info(f"News items found using 2025 May selector (list_news), count: {len(items)}")
+        return items
+        
+    # 2025년 5월 구조 (전체 블록 구조)
+    items = soup.select('div.sds-comps-vertical-layout.sds-comps-full-layout.iYo99IP8GixD0iM_4cb8')
+    if items:
+        logger.info(f"News items found using 2025 May selector (vertical layout), count: {len(items)}")
+        return items
+        
     # 다른 가능한 선택자들
     selectors = [
         'div.group_news > ul.list_news > li',
@@ -32,9 +44,8 @@ def extract_news_items(soup):
         'div.news_area',
         'div.newsitem',
         'li.bx',
-        '#main_pack > section.sc_new.sp_nnews._fe_news_collection._prs_nws > div.api_subject_bx > div.group_news > ul > li'
+        '#main_pack > section > div > div > ul > li'
     ]
-    
     for selector in selectors:
         items = soup.select(selector)
         if items:
@@ -49,8 +60,13 @@ def extract_title(item):
     """
     뉴스 아이템에서 제목을 추출하는 함수
     """
-    # 2025년 5월 구조 (제공된 HTML 정보 기반)
-    title_element = item.select_one('a.n6AJosQA40hUOAe_Vplg.cdv6mdm2_kpW2D6slkm6 span.sds-comps-text-ellipsis-1.sds-comps-text-type-headline1')
+    # 2025년 5월 최신 구조 (제공된 HTML 정보 기반)
+    title_element = item.select_one('a.X0fMYp2dHd0TCUS2hjww.OgU1CD78f4cPaKGs1OeY span.sds-comps-text-ellipsis-1.sds-comps-text-type-headline1')
+    if title_element:
+        return title_element.get_text(strip=True)
+    
+    # 2025년 5월 구조 (다른 가능한 클래스)
+    title_element = item.select_one('a.X0fMYp2dHd0TCUS2hjww span.sds-comps-text-ellipsis-1.sds-comps-text-type-headline1')
     if title_element:
         return title_element.get_text(strip=True)
 
@@ -86,8 +102,13 @@ def extract_url(item):
     """
     뉴스 아이템에서 URL을 추출하는 함수
     """
-    # 2025년 5월 구조
-    url_element = item.select_one('a.n6AJosQA40hUOAe_Vplg.cdv6mdm2_kpW2D6slkm6')
+    # 2025년 5월 최신 구조
+    url_element = item.select_one('a.X0fMYp2dHd0TCUS2hjww.OgU1CD78f4cPaKGs1OeY')
+    if url_element and url_element.has_attr('href'):
+        return url_element.get('href')
+        
+    # 유사한 선택자 시도 
+    url_element = item.select_one('a.X0fMYp2dHd0TCUS2hjww')
     if url_element and url_element.has_attr('href'):
         return url_element.get('href')
     
@@ -122,6 +143,11 @@ def extract_source(item):
     """
     뉴스 아이템에서 출처(언론사)를 추출하는 함수
     """
+    # 2025년 5월 최신 구조
+    source_element = item.select_one('a.X0fMYp2dHd0TCUS2hjww.jTrMMxVViEpMe6SA4ef2 span.sds-comps-text-type-body2.sds-comps-text-weight-sm')
+    if source_element:
+        return source_element.get_text(strip=True)
+        
     # 2025년 5월 구조
     source_element = item.select_one('div.sds-comps-profile-info-title span.sds-comps-text-type-body2.sds-comps-text-weight-sm')
     if source_element:
@@ -153,6 +179,13 @@ def extract_date(item):
     """
     뉴스 아이템에서 날짜를 추출하는 함수
     """
+    # 2025년 5월 최신 구조 - 예: "30분 전", "3일 전"
+    date_elements = item.select('span.sds-comps-text-type-body2.sds-comps-text-weight-sm.sds-comps-profile-info-subtext')
+    for date_elem in date_elements:
+        # 처음 나오는 날짜와 관련된 텍스트 찾기
+        if date_elem and ('전' in date_elem.text or '분' in date_elem.text or '일' in date_elem.text or '시간' in date_elem.text):
+            return date_elem.get_text(strip=True)
+    
     # 2025년 5월 구조
     date_element = item.select_one('span.sds-comps-text-type-body2.sds-comps-text-weight-sm.sds-comps-profile-info-subtext span.sds-comps-text-type-body2.sds-comps-text-weight-sm')
     if date_element:
@@ -192,8 +225,13 @@ def extract_content(item):
     """
     뉴스 아이템에서 내용(스니펫)을 추출하는 함수
     """
+    # 2025년 5월 최신 구조
+    content_element = item.select_one('a.X0fMYp2dHd0TCUS2hjww.IaKmSOGPdofdPwPE6cyU span.sds-comps-text-ellipsis-3.sds-comps-text-type-body1')
+    if content_element:
+        return content_element.get_text(strip=True)
+    
     # 2025년 5월 구조
-    content_element = item.select_one('a.n6AJosQA40hUOAe_Vplg.ZtHl2s0jtiC0IevYMD5G span.sds-comps-text-ellipsis-3.sds-comps-text-type-body1')
+    content_element = item.select_one('a.X0fMYp2dHd0TCUS2hjww span.sds-comps-text-ellipsis-3.sds-comps-text-type-body1')
     if content_element:
         return content_element.get_text(strip=True)
     
