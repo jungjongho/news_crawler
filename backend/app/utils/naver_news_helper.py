@@ -18,22 +18,31 @@ def extract_news_items(soup):
     뉴스 아이템 목록을 추출하는 함수
     다양한 선택자를 순차적으로 시도
     """
-    # 2025년 5월 최신 구조 (Xpath 및 선택자 정보 기반)
-    items = soup.select('#main_pack > section.sc_new.sp_nnews._fe_news_collection._prs_nws > div.api_subject_bx > div.group_news > ul > li')
+    # 2025년 5월 최신 구조 (with debug info)
+    logger.debug(f"Soup content (first 500 chars): {str(soup)[:500]}")
+    
+    # 원본 HTML 구조에서 추출한 선택자
+    items = soup.select('div.sds-comps-vertical-layout.sds-comps-full-layout.iYo99IP8GixD0iM_4cb8')
     if items:
-        logger.info(f"News items found using latest 2025 May selector (specific), count: {len(items)}")
+        logger.info(f"News items found using 2025 May selector (vertical layout), count: {len(items)}")
+        return items
+        
+    # 전체 기사 기본 이미지
+    items = soup.select('div.sds-comps-vertical-layout.sds-comps-full-layout._ZFrFZ37i2aIyKHzNWlA')
+    if items:
+        logger.info(f"News items found using 2025 May selector (_ZFrFZ37i2aIyKHzNWlA), count: {len(items)}")
+        return items
+        
+    # 2025년 5월 구조 (Xpath 및 선택자 정보 기반)
+    items = soup.select('#main_pack > section > div > div > ul > li')
+    if items:
+        logger.info(f"News items found using latest 2025 May selector (xpath), count: {len(items)}")
         return items
     
     # 2025년 5월 구조 (ul 리스트 기반)
     items = soup.select('ul.list_news._infinite_list li')
     if items:
         logger.info(f"News items found using 2025 May selector (list_news), count: {len(items)}")
-        return items
-        
-    # 2025년 5월 구조 (전체 블록 구조)
-    items = soup.select('div.sds-comps-vertical-layout.sds-comps-full-layout.iYo99IP8GixD0iM_4cb8')
-    if items:
-        logger.info(f"News items found using 2025 May selector (vertical layout), count: {len(items)}")
         return items
         
     # 다른 가능한 선택자들

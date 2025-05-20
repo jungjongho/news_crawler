@@ -6,6 +6,7 @@ import os
 import json
 import shutil
 import datetime
+import pandas as pd
 from typing import List, Dict, Any, Optional, Tuple
 
 def save_to_csv(data: List[Dict[str, Any]], file_path: str, encoding: str = 'utf-8-sig', copy_to_download: bool = False, download_path: str = None) -> Tuple[bool, Optional[str]]:
@@ -16,12 +17,14 @@ def save_to_csv(data: List[Dict[str, Any]], file_path: str, encoding: str = 'utf
         data: 저장할 데이터 리스트
         file_path: 저장할 파일 경로
         encoding: 파일 인코딩 (기본값: utf-8-sig)
+        copy_to_download: 다운로드 폴더에 복사할지 여부
+        download_path: 다운로드 폴더 경로
         
     Returns:
-        저장 성공 여부
+        (저장 성공 여부, 다운로드 폴더에 저장된 파일 경로)
     """
     if not data:
-        return False
+        return False, None
     
     try:
         # 디렉토리 생성
@@ -57,6 +60,59 @@ def save_to_csv(data: List[Dict[str, Any]], file_path: str, encoding: str = 'utf
         return True, downloaded_path
     except Exception as e:
         print(f"CSV 저장 중 오류: {str(e)}")
+        return False, None
+
+def save_to_excel(data: List[Dict[str, Any]], file_path: str, copy_to_download: bool = False, download_path: str = None) -> Tuple[bool, Optional[str]]:
+    """
+    데이터를 Excel 파일로 저장합니다.
+    
+    Args:
+        data: 저장할 데이터 리스트
+        file_path: 저장할 파일 경로
+        copy_to_download: 다운로드 폴더에 복사할지 여부
+        download_path: 다운로드 폴더 경로
+        
+    Returns:
+        (저장 성공 여부, 다운로드 폴더에 저장된 파일 경로)
+    """
+    if not data:
+        return False, None
+    
+    try:
+        # 디렉토리 생성
+        os.makedirs(os.path.dirname(os.path.abspath(file_path)), exist_ok=True)
+        
+        # DataFrame 생성 및 Excel 파일 저장
+        df = pd.DataFrame(data)
+        
+        # 파일 확장자가 .xlsx가 아니면 추가
+        if not file_path.endswith('.xlsx'):
+            file_path = file_path.replace('.csv', '.xlsx') if file_path.endswith('.csv') else f"{file_path}.xlsx"
+        
+        # Excel 파일로 저장
+        df.to_excel(file_path, index=False, engine='openpyxl')
+        
+        # 다운로드 폴더에 복사
+        downloaded_path = None
+        if copy_to_download and download_path:
+            try:
+                # 다운로드 폴더 확인
+                os.makedirs(download_path, exist_ok=True)
+                
+                # 파일명만 추출
+                file_name = os.path.basename(file_path)
+                download_file_path = os.path.join(download_path, file_name)
+                
+                # 파일 복사
+                shutil.copy2(file_path, download_file_path)
+                downloaded_path = download_file_path
+                print(f"파일이 다운로드 폴더에 복사되었습니다: {download_file_path}")
+            except Exception as e:
+                print(f"다운로드 폴더 복사 중 오류: {str(e)}")
+        
+        return True, downloaded_path
+    except Exception as e:
+        print(f"Excel 저장 중 오류: {str(e)}")
         return False, None
 
 def read_csv(file_path: str, encoding: str = 'utf-8-sig') -> List[Dict[str, Any]]:
@@ -271,3 +327,48 @@ def format_size(size_bytes: int) -> str:
         return f"{size_bytes / (1024 * 1024):.1f} MB"
     else:
         return f"{size_bytes / (1024 * 1024 * 1024):.1f} GB"
+
+def get_excel_files(directory: str) -> List[Dict[str, Any]]:
+    """
+    디렉토리에서 모든 Excel 파일 목록을 가져옵니다.
+    
+    Args:
+        directory: Excel 파일이 있는 디렉토리 경로
+        
+    Returns:
+        Excel 파일 정보 목록
+    """
+    if not os.path.exists(directory):
+        return []
+    
+    try:
+        # Excel 파일 목록 가져오기
+        file_info_list = []
+        for file_name in os.listdir(directory):
+            if file_name.endswith('.xlsx') or file_name.endswith('.xls'):
+                file_path = os.path.join(directory, file_name)
+                
+                # 파일 기본 정보
+                stat = os.stat(file_path)
+                modified_time = stat.st_mtime
+                modified_time_str = datetime.datetime.fromtimestamp(modified_time).strftime("%Y-%m-%d %H:%M:%S")
+                
+                file_info = {
+                    "file_name": file_name,
+                    "file_path": file_path,
+                    "file_size": stat.st_size,
+                    "file_size_str": format_size(stat.st_size),
+                    "modified_time": modified_time,
+                    "modified_time_str": modified_time_str,
+                    "is_evaluated": "_evaluated" in file_name
+                }
+                
+                file_info_list.append(file_info)
+        
+        # 수정 시간 기준 내림차순 정렬 (최신 파일 먼저)
+        file_info_list.sort(key=lambda x: x['modified_time'], reverse=True)
+        
+        return file_info_list
+    except Exception as e:
+        print(f"파일 목록 가져오기 중 오류: {str(e)}")
+        return []

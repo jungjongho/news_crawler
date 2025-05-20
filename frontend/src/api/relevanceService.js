@@ -5,7 +5,7 @@ const relevanceService = {
   // 관련성 평가 요청
   evaluateNews: async (filePath, apiKey, model = 'gpt-3.5-turbo') => {
     try {
-      const response = await apiClient.post('/relevance/evaluate', {
+      const response = await apiClient.post('/api/relevance/evaluate', {
         file_path: filePath,
         api_key: apiKey,
         model,

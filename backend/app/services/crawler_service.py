@@ -4,7 +4,7 @@
 import os
 import requests
 # import pandas as pd
-from app.utils.csv_utils import save_to_csv
+from app.utils.csv_utils import save_to_csv, save_to_excel
 from bs4 import BeautifulSoup
 from urllib.parse import quote_plus
 import logging
@@ -46,15 +46,26 @@ class CrawlerService:
         Returns:
             생성된 검색 URL
         """
-        # 기본 파라미터: 뉴스 검색, 최신순 정렬
+        # 기본 파라미터: 뉴스 검색, 최신순 정렬 (2025년 5월 기준 최신 URL 형식)
         params = {
-            'where': 'news',
-            'sm': 'tab_jum',
+            'ssc': 'tab.news.all',
             'query': keyword,
-            'sort': 0,  # 관련도순
+            'sm': 'tab_opt',
+            'sort': 1,  # 최신순
+            'photo': 0,
+            'field': 0,
             'pd': -1,   # 전체 기간
-            'start': (start_page - 1) * 10 + 1,
-            'nso': 'so:r,p:all,a:all' # 관련도순, 전체 기간, 모든 언론사
+            'ds': '',
+            'de': '',
+            'docid': '',
+            'related': 0,
+            'mynews': 0,
+            'office_type': 0,
+            'office_section_code': 0,
+            'news_office_checked': '',
+            'nso': 'so:dd,p:all',  # 최신순, 전체 기간
+            'is_sug_officeid': 0,
+            'start': (start_page - 1) * 10 + 1  # 페이지네이션
         }
         
         # URL 파라미터 생성
@@ -80,18 +91,27 @@ class CrawlerService:
             try:
                 # 검색 URL 생성 및 요청
                 url = self._build_search_url(keyword, page)
-                logger.debug(f"Requesting URL: {url}")
+                logger.info(f"Requesting URL: {url}")
+                
+                # URL 로그 기록 기능 제거됨
                 
                 response = requests.get(url, headers=self.headers)
                 if response.status_code != 200:
                     logger.error(f"Failed to fetch page {page} for keyword '{keyword}': {response.status_code}")
+                    logger.error(f"Response content: {response.text[:500]}")
+                    
+                    # 오류 로그 기록 기능 제거됨
+                    
                     break
                 
                 # HTML 파싱
                 soup = BeautifulSoup(response.text, 'html.parser')
                 
                 # 디버그용 - HTML 구조 파악
+                logger.info(f"HTML Content Length: {len(response.text)}")
                 logger.debug(f"First 1000 chars of HTML: {response.text[:1000]}")
+                
+                # HTML 저장 기능 제거됨
                 
                 # CSS 선택자 확인
                 ul_element = soup.select_one('ul.list_news._infinite_list')
@@ -185,7 +205,7 @@ class CrawlerService:
         """
         if not news_items:
             logger.warning("No news items to save")
-            return None
+            return None, None
         
         try:
             # 파일명 생성 (현재 시간 포함)
@@ -214,4 +234,46 @@ class CrawlerService:
         
         except Exception as e:
             logger.error(f"Error saving results: {str(e)}")
+            return None, None
+            
+    def save_results_to_excel(self, news_items: List[Dict[str, Any]]) -> Tuple[Optional[str], Optional[str]]:
+        """
+        크롤링 결과를 Excel 파일로 저장
+        
+        Args:
+            news_items: 저장할 뉴스 아이템 목록
+            
+        Returns:
+            (저장된 파일 경로, 다운로드 폴더에 저장된 파일 경로) 또는 오류 시 (None, None)
+        """
+        if not news_items:
+            logger.warning("No news items to save")
+            return None, None
+        
+        try:
+            # 파일명 생성 (현재 시간 포함)
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            file_name = f"naver_news_{timestamp}.xlsx"
+            file_path = os.path.join(settings.RESULTS_PATH, file_name)
+            
+            # Excel 파일로 저장 (다운로드 폴더에도 복사)
+            success, download_path = save_to_excel(
+                news_items, 
+                file_path,
+                copy_to_download=settings.AUTO_COPY_TO_DOWNLOADS,
+                download_path=settings.USER_DOWNLOAD_PATH
+            )
+            
+            if success:
+                if download_path:
+                    logger.info(f"Saved {len(news_items)} news items to Excel file {file_path} and copied to {download_path}")
+                else:
+                    logger.info(f"Saved {len(news_items)} news items to Excel file {file_path}")
+                return file_path, download_path
+            else:
+                logger.error("Failed to save results to Excel")
+                return None, None
+        
+        except Exception as e:
+            logger.error(f"Error saving results to Excel: {str(e)}")
             return None, None
