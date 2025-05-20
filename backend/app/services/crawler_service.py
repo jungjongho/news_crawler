@@ -72,6 +72,41 @@ class CrawlerService:
         param_str = "&".join([f"{k}={quote_plus(str(v)) if k == 'query' else v}" for k, v in params.items()])
         return f"{self.base_url}?{param_str}"
     
+    def _format_keywords_for_filename(self, news_items: List[Dict[str, Any]]) -> str:
+        """
+        뉴스 아이템에서 키워드를 추출하여 파일명에 적합한 형식으로 변환
+        
+        Args:
+            news_items: 뉴스 아이템 목록
+            
+        Returns:
+            파일명에 사용할 키워드 문자열
+        """
+        # 모든 고유한 키워드 추출
+        unique_keywords = set()
+        for item in news_items:
+            keyword = item.get('keyword', '')
+            if keyword:
+                unique_keywords.add(keyword)
+        
+        # 파일이름에 적합한 형태로 변환
+        # 길이 제한 (너무 길면 파일 경로 문제 발생 가능)
+        if len(unique_keywords) > 3:
+            # 3개 이상이면 처음 3개만 유지하고 나머지는 개수 표시
+            sorted_keywords = sorted(list(unique_keywords))[:3]
+            keywords_str = '_'.join(sorted_keywords) + f"_and_{len(unique_keywords)-3}_more"
+        else:
+            # 3개 이하면 모두 포함
+            keywords_str = '_'.join(sorted(list(unique_keywords)))
+        
+        # 파일명에 사용할 수 없는 문자 제거
+        keywords_str = keywords_str.replace(' ', '_').replace('/', '_').replace('\\', '_')
+        # 최대 길이 제한
+        if len(keywords_str) > 100:  # 적절한 최대 길이
+            keywords_str = keywords_str[:97] + '...'
+        
+        return keywords_str
+    
     def crawl_keyword(self, keyword: str, max_news: int = 50) -> List[Dict[str, Any]]:
         """
         특정 키워드에 대한 뉴스 크롤링
@@ -208,9 +243,13 @@ class CrawlerService:
             return None, None
         
         try:
-            # 파일명 생성 (현재 시간 포함)
+            # 파일명 생성 (키워드와 현재 시간 포함)
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            file_name = f"naver_news_{timestamp}.csv"
+            
+            # 키워드 추출 및 포맷팅
+            keywords_str = self._format_keywords_for_filename(news_items)
+            
+            file_name = f"naver_news_{keywords_str}_{timestamp}.csv"
             file_path = os.path.join(settings.RESULTS_PATH, file_name)
             
             # CSV 파일로 저장 (다운로드 폴더에도 복사)
@@ -251,9 +290,13 @@ class CrawlerService:
             return None, None
         
         try:
-            # 파일명 생성 (현재 시간 포함)
+            # 파일명 생성 (키워드와 현재 시간 포함)
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            file_name = f"naver_news_{timestamp}.xlsx"
+            
+            # 키워드 추출 및 포맷팅
+            keywords_str = self._format_keywords_for_filename(news_items)
+            
+            file_name = f"naver_news_{keywords_str}_{timestamp}.xlsx"
             file_path = os.path.join(settings.RESULTS_PATH, file_name)
             
             # Excel 파일로 저장 (다운로드 폴더에도 복사)
